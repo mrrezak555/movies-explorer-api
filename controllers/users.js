@@ -1,6 +1,7 @@
 const User = require('../models/user');
 const NotFoundError = require('../errors/NotFoundError');
 const ValidationError = require('../errors/ValidationError');
+const EmailError = require('../errors/EmailError');
 
 const NO_ERROR = 200;
 
@@ -16,6 +17,8 @@ const updateUser = (req, res, next) => {
     .catch((err) => {
       if (err.name === 'ValidationError') {
         return next(new ValidationError('Невалидный идентификатор пользователя.'));
+      } if (err.code === 11000) {
+        return next(new EmailError('Пользователь с таким email уже существует'));
       }
       return next(err);
     });

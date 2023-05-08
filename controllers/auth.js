@@ -20,9 +20,9 @@ const createUser = (req, res, next) => {
       password: hash,
     }))
     .then((user) => {
-      // eslint-disable-next-line no-param-reassign
-      user.password = undefined;
-      res.send({ user });
+      const sanitizedUser = { ...user.toObject() };
+      delete sanitizedUser.password;
+      res.send({ user: sanitizedUser });
     })
     .catch(
       (err) => {
@@ -42,12 +42,11 @@ const login = (req, res, next) => {
     password,
   } = req.body;
   User.find({ email }).select('+password')
-    // eslint-disable-next-line consistent-return
     .then((userData) => {
       if (!userData[0]) {
         return next(new UnauthorizedError('Неправильные почта или пароль'));
       }
-      bcrypt.compare(password, userData[0].password)
+      return bcrypt.compare(password, userData[0].password)
         .then((matched) => {
           if (!matched) {
             // хеши не совпали — отклоняем промис

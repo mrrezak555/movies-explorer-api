@@ -1,7 +1,6 @@
 const router = require('express').Router();
-const auth = require('../middlewares/auth');
-// eslint-disable-next-line import/order
 const { celebrate, Joi } = require('celebrate');
+const auth = require('../middlewares/auth');
 const NotFoundError = require('../errors/NotFoundError');
 
 const userRoutes = require('./users');
@@ -22,11 +21,11 @@ router.post('/signin', celebrate({
 router.post('/signup', celebrate({
   body: Joi.object().keys({
     email: Joi.string().required().email(),
-    password: Joi.string().required().min(3),
-    name: Joi.string().min(2).max(30),
+    password: Joi.string().required(),
+    name: Joi.string().min(2).max(30).required(),
   }),
 }), createUser);
-router.use((req, res, next) => next(new NotFoundError('Проверьте корректность пути запроса')));
+router.use(auth, (req, res, next) => next(new NotFoundError('Проверьте корректность пути запроса')));
 
 module.exports = {
   router,

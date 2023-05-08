@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const { errors } = require('celebrate');
@@ -19,7 +20,6 @@ app.use(express.json());
 app.use('/', router);
 app.use(errorLogger);
 app.use(errors());
-// eslint-disable-next-line consistent-return, no-unused-vars
 app.use((err, req, res, next) => {
   console.error(err);
   const { statusCode = INTERNAL_ERROR, message } = err;
@@ -27,6 +27,7 @@ app.use((err, req, res, next) => {
     return res.status(INTERNAL_ERROR).send({ message: 'на сервере произошла ошибка' });
   }
   res.status(statusCode).send({ message });
+  return next();
 });
 
 app.listen(PORT, () => {
