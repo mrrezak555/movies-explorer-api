@@ -1,0 +1,39 @@
+{
+  "name": "movies-explorer-api",
+  "version": "0.0.1",
+  "description": "movies backend api",
+  "main": "index.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "lint": "npx eslint ./"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mrrezak555/movies-explorer-api.git"
+  },
+  "author": "Kirill Zuev",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mrrezak555/movies-explorer-api/issues"
+  },
+  "homepage": "https://github.com/mrrezak555/movies-explorer-api#readme",
+  "dependencies": {
+    "bcrypt": "^5.1.0",
+    "celebrate": "^15.0.1",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "express-winston": "^4.2.0",
+    "jsonwebtoken": "^9.0.0",
+    "mongoose": "^7.1.0",
+    "nodemon": "^2.0.22",
+    "Router": "^2.1.0",
+    "validator": "^13.9.0",
+    "winston": "^3.8.2"
+  },
+  "devDependencies": {
+    "eslint": "^8.40.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.27.5"
+  }
+}
