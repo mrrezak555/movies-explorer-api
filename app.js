@@ -6,10 +6,10 @@ const cors = require('./middlewares/cros');
 const { requestLogger, errorLogger } = require('./middlewares/logger');
 const { router } = require('./routes/index');
 
-const { PORT = 3000 } = process.env;
+const { PORT = 3000, DB_ADDRESS = 'mongodb://127.0.0.1:27017/bitfilmsdb' } = process.env;
 const INTERNAL_ERROR = 500;
 
-mongoose.connect('mongodb://127.0.0.1:27017/bitfilmsdb', {
+mongoose.connect(DB_ADDRESS, {
   useNewUrlParser: true,
 });
 
