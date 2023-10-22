@@ -2,18 +2,22 @@ const Movie = require('../models/movie');
 const NotFoundError = require('../errors/NotFoundError');
 const ValidationError = require('../errors/ValidationError');
 const ForbiddenError = require('../errors/ForbiddenError');
+const { InternalServerError } = require('../errors/InternalServarError');
+const { BadRequestError } = require('../errors/BadRequestError');
+const mongoose = require('mongoose');
+const { constants } = require('http2');
 
 const NO_ERROR = 200;
 
-const getMovies = (req, res, next) => Movie.find({ owner: req.user._id })
-  .then((movies) => res.status(NO_ERROR).send(movies))
-  .catch(
-    (err) => {
-      next(err);
-    },
-  );
+const getMovies = (req, res, next) => {
+  const userId = req.user._id;
+  Movie.find({ owner: userId })
+    .then((movies) => res.send(movies))
+    .catch(() => next(new InternalServerError('Ошибка сервера')));
+};
 
-const creatMovie = (req, res, next) => {
+const createMovie = (req, res, next) => {
+  console.log('create');
   const {
     country,
     director,
@@ -21,13 +25,12 @@ const creatMovie = (req, res, next) => {
     year,
     description,
     image,
-    trailerLink,
+    trailer,
     nameRU,
     nameEN,
     thumbnail,
     movieId,
   } = req.body;
-  const ownerId = req.user._id;
   Movie.create({
     country,
     director,
@@ -35,52 +38,56 @@ const creatMovie = (req, res, next) => {
     year,
     description,
     image,
-    trailerLink,
+    trailer,
     nameRU,
     nameEN,
     thumbnail,
     movieId,
-    owner: ownerId,
+    owner: req.user._id,
   })
-    // вернём записанные в базу данные
-    .then((movie) => res.send({ movie }))
-    // данные не записались, вернём ошибку
-    .catch(
-      (err) => {
-        if (err.name === 'ValidationError') {
-          return next(new ValidationError('Ошибка валидации запроса'));
-        }
-        return next(err);
-      },
-    );
+    .then((movie) => {
+      res.status(constants.HTTP_STATUS_CREATED).send(movie);
+    })
+    .catch((error) => {
+      console.log(error);
+      if (error instanceof mongoose.Error.ValidationError) {
+        return next(new BadRequestError('Невалидные данные'));
+      }
+      return next(new InternalServerError('Ошибка сервера'));
+    });
 };
 
 const deleteMovie = (req, res, next) => {
-  const { _id } = req.params;
-
-  Movie.findById(_id)
-    .then((movie) => {
-      if (!movie) {
-        return next(new NotFoundError('Запрашиваемый фильм не найден'));
+  const { movieId } = req.params;
+  Movie.isMovieOwned(movieId, req.user._id)
+    // eslint-disable-next-line consistent-return
+    .then((matched) => {
+      if (!matched) {
+        return next(
+          new ForbiddenError('Это не ваша карточка, вы не можете ее удалить'),
+        );
       }
-      const { owner } = movie;
-      if (owner.toString() === req.user._id.toString()) {
-        return Movie.findByIdAndRemove(_id)
-          .then(() => res.status(NO_ERROR).send(movie));
-      }
-      return next(new ForbiddenError('У вас нет прав на удаление этого фильма'));
+      Movie.findByIdAndDelete(movieId)
+        .then((movie) => {
+          if (movie) {
+            res.send(movie);
+            return;
+          }
+          // eslint-disable-next-line consistent-return
+          return next(new NotFoundError('Карточка не найдена'));
+        })
+        .catch((error) => {
+          if (error instanceof mongoose.Error.CastError) {
+            return next(new BadRequestError('Невалидные данные'));
+          }
+          return next(new InternalServerError('Ошибка сервера'));
+        });
     })
-    .catch((err) => {
-      if (err.name === 'CastError') {
-        const error = new ValidationError('Неверный формат идентификатора фильма');
-        return next(error);
-      }
-      return next(err);
-    });
+    .catch(() => next(new InternalServerError('Ошибка сервера')));
 };
 
 module.exports = {
   getMovies,
-  creatMovie,
+  createMovie,
   deleteMovie,
 };

@@ -2,6 +2,7 @@ const allowedCors = [
   'http://mesto.insta.nomoredomains.monster',
   'https://mesto.insta.nomoredomains.monster',
   'http://localhost:3000',
+  'http://localhost:3001',
 ];
 
 module.exports = (req, res, next) => {

@@ -1,66 +1,87 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
-const ValidationError = require('../errors/ValidationError');
-const EmailError = require('../errors/EmailError');
-const UnauthorizedError = require('../errors/UnauthorizedError');
-
-const { JWT_SECRET, NODE_ENV } = process.env;
+const mongoose = require('mongoose');
+const { constants } = require('http2');
+const { InternalServerError } = require('../errors/InternalServarError');
+const { ConflictError } = require('../errors/ConflictError');
+const { BadRequestError } = require('../errors/BadRequestError');
 
 const createUser = (req, res, next) => {
-  const {
-    email,
-    password,
-    name,
-  } = req.body;
-  bcrypt.hash(password, 10)
-    .then((hash) => User.create({
-      name,
-      email,
-      password: hash,
-    }))
-    .then((user) => {
-      const sanitizedUser = { ...user.toObject() };
-      delete sanitizedUser.password;
-      res.send({ user: sanitizedUser });
+  const { name, email, password } = req.body;
+  bcrypt
+    .hash(password, 10)
+    .then((hash) => {
+      User.create({
+        name,
+        email,
+        password: hash,
+      })
+        .then((data) => {
+          const token = jwt.sign(
+            { _id: data._id },
+            process.env.NODE_ENV === 'production'
+              ? process.env.JWT_SECRET
+              : 'dev-secret',
+            {
+              expiresIn: '7d',
+            },
+          );
+          res
+            .cookie('token', token, {
+              maxAge: 3600000 * 24 * 7,
+              httpOnly: true,
+              sameSite: 'none',
+              secure: true,
+            })
+            .status(constants.HTTP_STATUS_CREATED)
+            .send({
+              email: data.email,
+              _id: data._id,
+              name: data.name,
+            });
+        })
+        .catch((error) => {
+          if (error instanceof mongoose.Error.ValidationError) {
+            return next(new BadRequestError('Невалидные данные'));
+          }
+          if (error.code === 11000) {
+            return next(new ConflictError('Данная почта уже используется'));
+          }
+          return next(new InternalServerError('Ошибка сервера'));
+        });
     })
-    .catch(
-      (err) => {
-        if (err.name === 'ValidationError') {
-          return next(new ValidationError('Ошибка валидации запроса'));
-        } if (err.code === 11000) {
-          return next(new EmailError('Пользователь с таким email уже существует'));
-        }
-        return next(err);
-      },
-    );
+    .catch(() => next(new InternalServerError('Ошибка сервера')));
 };
 
 const login = (req, res, next) => {
-  const {
-    email,
-    password,
-  } = req.body;
-  User.find({ email }).select('+password')
-    .then((userData) => {
-      if (!userData[0]) {
-        return next(new UnauthorizedError('Неправильные почта или пароль'));
-      }
-      return bcrypt.compare(password, userData[0].password)
-        .then((matched) => {
-          if (!matched) {
-            // хеши не совпали — отклоняем промис
-            return next(new UnauthorizedError('Неправильные почта или пароль'));
-          }
-          const jwtToken = jwt.sign({ _id: userData[0]._id }, NODE_ENV === 'production' ? JWT_SECRET : 'secret', { expiresIn: '7d' });
-          // аутентификация успешна
-          return res.send({ token: jwtToken });
+  const { email, password } = req.body;
+  return User.findUserByCredentials(email, password)
+    .then((user) => {
+      const token = jwt.sign(
+        { _id: user._id },
+        process.env.NODE_ENV === 'production'
+          ? process.env.JWT_SECRET
+          : 'dev-secret',
+        {
+          expiresIn: '7d',
+        },
+      );
+      res
+        .cookie('token', token, {
+          maxAge: 3600000 * 24 * 7,
+          httpOnly: true,
+          sameSite: 'none',
+          secure: true,
         })
-        .catch(
-          (err) => {
-            next(err);
-          },
-        );
+        .send({
+          email: user.email,
+          _id: user._id,
+          name: user.name,
+        });
+    })
+    .catch((err) => {
+      next(err);
     });
 };
 

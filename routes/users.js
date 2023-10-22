@@ -6,11 +6,21 @@ const {
 } = require('../controllers/users');
 
 router.get('/me', getCurrentUser);
-router.patch('/me', celebrate({
-  body: Joi.object().keys({
-    email: Joi.string().required().email(),
-    name: Joi.string().required().min(2).max(30),
+router.patch(
+  '/me',
+  celebrate({
+    body: Joi.object().keys({
+      name: Joi.string().min(2).max(30).messages({
+        'string.min': 'Минимальная длина имени - 2 символа',
+        'string.max': 'Максимальная длина имени - 30 символов',
+      }),
+      email: Joi.string().email().required().messages({
+        'string.email': 'Неправильный формат почты',
+        'any.required': 'Поле "email" обязательно для заполнения',
+      }),
+    }),
   }),
-}), updateUser);
+  updateUser,
+);
 
 module.exports = router;

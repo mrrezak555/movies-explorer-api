@@ -29,7 +29,7 @@ const movieSchema = new mongoose.Schema({
       message: 'Неверный формат ссылки',
     },
   },
-  trailerLink: {
+  trailer: {
     type: String,
     required: true,
     validate: {
@@ -63,5 +63,16 @@ const movieSchema = new mongoose.Schema({
     required: true,
   },
 });
+
+movieSchema.statics.isMovieOwned = function (movieId, userId) {
+  return this.findById(movieId)
+    .then((movie) => {
+      if (!movie) {
+        return Promise.reject(new Error('Карточка не найдена'));
+      }
+      return JSON.stringify(movie.owner) === JSON.stringify(userId);
+    })
+    .catch((err) => err);
+};
 
 module.exports = mongoose.model('movie', movieSchema);

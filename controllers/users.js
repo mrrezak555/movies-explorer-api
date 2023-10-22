@@ -1,49 +1,51 @@
 const User = require('../models/user');
-const NotFoundError = require('../errors/NotFoundError');
-const ValidationError = require('../errors/ValidationError');
-const EmailError = require('../errors/EmailError');
+const { InternalServerError } = require('../errors/InternalServarError');
+const { BadRequestError } = require('../errors/BadRequestError');
+const { ConflictError } = require('../errors/ConflictError');
+const { default: mongoose } = require('mongoose');
 
 const NO_ERROR = 200;
 
 const updateUser = (req, res, next) => {
-  // обновим имя найденного по _id пользователя
-  const owner = req.user._id;
-  User.findByIdAndUpdate(owner, { email: req.body.email, name: req.body.name }, {
-    new: true, // обработчик then получит на вход обновлённую запись
-    runValidators: true, // данные будут валидированы перед изменением
-  })
-    .orFail(() => new NotFoundError('Запрашиваемый пользователь не найден'))
+  const { name, email } = req.body;
+
+  User.findByIdAndUpdate(
+    req.user._id,
+    {
+      name,
+      email,
+    },
+    {
+      new: true,
+      runValidators: true,
+    },
+  )
     .then((user) => res.status(NO_ERROR).send(user))
-    .catch((err) => {
-      if (err.name === 'ValidationError') {
-        return next(new ValidationError('Невалидный идентификатор пользователя.'));
-      } if (err.code === 11000) {
-        return next(new EmailError('Пользователь с таким email уже существует'));
+    .catch((error) => {
+      if (error.code === 11000) {
+        return next(new ConflictError('Данная почта уже используется'));
       }
-      return next(err);
+      if (error instanceof mongoose.Error.ValidationError) {
+        return next(new BadRequestError('Невалидные данные'));
+      }
+      return next(new InternalServerError('Ошибка сервера'));
     });
 };
 
 const getCurrentUser = (req, res, next) => {
-  const {
-    _id,
-  } = req.user;
-  User.findById({ _id })
-    .then((userData) => {
-      if (userData) {
-        res.status(200).send({ userData });
-      } else {
-        next(new NotFoundError('Запрашиваемый пользователь не найден'));
-      }
+  User.findById(req.user._id)
+    .then((user) => {
+      res.status(NO_ERROR).send(user);
     })
-    .catch(
-      (err) => {
-        next(err);
-      },
-    );
+    .catch(() => next(new InternalServerError('Ошибка сервера')));
+};
+const signout = (req, res) => {
+  res.clearCookie('token');
+  res.status(NO_ERROR).send({ message: 'Выход выполнен успешно' });
 };
 
 module.exports = {
   updateUser,
   getCurrentUser,
+  signout,
 };
