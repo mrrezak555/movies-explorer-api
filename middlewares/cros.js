@@ -1,6 +1,6 @@
 const allowedCors = [
-  'http://mesto.insta.nomoredomains.monster',
-  'https://mesto.insta.nomoredomains.monster',
+  'http://movies.best.nomoredomains.monster',
+  'https://movies.best.nomoredomains.monster',
   'http://localhost:3000',
   'http://localhost:3001',
 ];
