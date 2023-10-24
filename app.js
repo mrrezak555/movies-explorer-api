@@ -2,10 +2,11 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const { errors } = require('celebrate');
-const cors = require('./middlewares/cros');
+const cors = require('cors');
 const { requestLogger, errorLogger } = require('./middlewares/logger');
 const { router } = require('./routes/index');
 const cookieParser = require('cookie-parser');
+const { corsOptions } = require('./utils/corsOptions');
 
 const { PORT = 3000, DB_ADDRESS = 'mongodb://127.0.0.1:27017/bitfilmsdb' } = process.env;
 const INTERNAL_ERROR = 500;
@@ -16,7 +17,7 @@ mongoose.connect(DB_ADDRESS, {
 
 const app = express();
 app.use(requestLogger);
-app.use(cors);
+app.use(cors(corsOptions))
 app.use(cookieParser());
 app.use(express.json());
 app.use('/', router);
